@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 
+void init();
 int token();
 void load_initial();
 float sigmoid(float x);
@@ -10,7 +12,7 @@ enum {IP_NEURONS = 784, HL_NEURONS = 16, OP_NEURONS = 10};
 
 FILE *fp = NULL;
 float initial_layer[784] = {0.0};
-const float ALPHA = 0.01;
+const float ALPHA = 0.05;
 
 typedef struct {
 	float value;
@@ -35,24 +37,14 @@ int main() {
 	fp = fopen("mnist/mnist_train.csv", "r");
 	// skip the header line
 	while (getc(fp) != '\n');
+	int epoch = 0;
+
+	// initialize
+	init();
 
 	epoch:
 	int label = token();
 	load_initial();
-
-	// initialize weights to 1
-	for (int i = 0; i < HL_NEURONS; i++) {
-		for (int j = 0; j < IP_NEURONS; j++) {
-			hl1[i].weights[j] = 1.0;
-		}
-
-
-		for (int j = 0; j < HL_NEURONS; j++)
-			hl2[i].weights[j] = 1.0;
-	}
-	for (int i = 0; i < OP_NEURONS; i++)
-		for (int j = 0; j < HL_NEURONS; j++)
-			opl[i].weights[j] = 1.0;
 
 	// forward pass
 	// HL1
@@ -80,9 +72,14 @@ int main() {
 	}
 
 	// print after each pass
-	for (int i = 0; i < OP_NEURONS; i++)
+	int largest = 0;
+	printf("Number: %d\n", label);
+	for (int i = 0; i < OP_NEURONS; i++) {
+		if (opl[i].value > opl[largest].value)
+			largest = i;
 		printf("%d: %f\n", i, opl[i].value);
-	printf("\n");
+	}
+	printf("Final: %d\n\n", largest);
 
 	// Back propogation
 	float op_errors[OP_NEURONS] = {0.0};
@@ -92,8 +89,8 @@ int main() {
 	// output layer
 	for (int i = 0; i < OP_NEURONS; i++) {
 		op_errors[i] = opl[i].value * (1 - opl[i].value) * (-opl[i].value);
-		if (i == label - 1)
-			op_errors[label-1] = opl[i].value * (1 - opl[i].value) * (1 - opl[i].value);
+		if (i == label)
+			op_errors[label] = opl[i].value * (1 - opl[i].value) * (1 - opl[i].value);
 
 		for (int j = 0; j < HL_NEURONS; j++)
 			opl[i].weights[j] += op_errors[i] * ALPHA * opl[i].value;
@@ -126,7 +123,10 @@ int main() {
 		for (int j = 0; j < IP_NEURONS; j++)
 			hl1[i].weights[j] += hl1_errors[i] * ALPHA * hl2[i].value;
 	}
-	goto epoch;
+
+	epoch += 1;
+	if (epoch < 60000)
+		goto epoch;
 	return 0;
 }
 
@@ -138,9 +138,8 @@ float sigmoid(float x) {
 int token() {
 	int ret = 0;
 	char c;
-	while ((c = getc(fp)) != ',' && c != '\n')
+	while ((c = getc(fp)) != ',' && c != '\n' && c != EOF)
 		ret = 10 * ret + c - '0';
-
 	return ret;
 }
 
@@ -148,4 +147,31 @@ void load_initial() {
 	for (int i = 0; i < IP_NEURONS; i++) {
 		initial_layer[i] = (float) token() / 255.0;
 	}
+}
+
+// set random weights for all the neurons
+#include <time.h>
+#include <stdlib.h>
+
+void init() {
+	srand(time(NULL));
+	const int SPREAD = 256;
+
+	// hidden layers 1 and 2 weights
+	for (int i = 0; i < HL_NEURONS; i++) {
+
+		for (int j = 0; j < IP_NEURONS; j++)
+			hl1[i].weights[j] =
+				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
+
+		for (int j = 0; j < HL_NEURONS; j++)
+			hl2[i].weights[j] =
+				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
+	}
+
+	// Output layer weights
+	for (int i = 0; i < OP_NEURONS; i++)
+		for (int j = 0; j < HL_NEURONS; j++)
+			opl[i].weights[j] =
+				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
 }
