@@ -12,7 +12,7 @@ enum {IP_NEURONS = 784, HL_NEURONS = 16, OP_NEURONS = 10};
 
 FILE *fp = NULL;
 float initial_layer[784] = {0.0};
-const float ALPHA = 0.05;
+const float ALPHA = 0.5;
 
 typedef struct {
 	float value;
@@ -43,7 +43,7 @@ int main() {
 	init();
 
 	epoch:
-	int label = token();
+	int label = token(); // output
 	load_initial();
 
 	// forward pass
@@ -52,6 +52,7 @@ int main() {
 		float sum = 0;
 		for (int j = 0; j < IP_NEURONS; j++)
 			sum += initial_layer[j] * hl1[i].weights[j];
+
 		hl1[i].value = sigmoid(sum);
 	}
 
@@ -86,28 +87,32 @@ int main() {
 	float hl2_errors[HL_NEURONS] = {0.0};
 	float hl1_errors[HL_NEURONS] = {0.0};
 
-	// output layer
+	// hidden layer 2 -> output layer
 	for (int i = 0; i < OP_NEURONS; i++) {
-		op_errors[i] = opl[i].value * (1 - opl[i].value) * (-opl[i].value);
+
+		// DELj = Oj * (1 - Oj) * (Tj - Oj)
+		// Target for the output layer is all 0s, except for the label neuron, which is 1
+		op_errors[i] = opl[i].value * (1 - opl[i].value) * (0.0 - opl[i].value);
 		if (i == label)
-			op_errors[label] = opl[i].value * (1 - opl[i].value) * (1 - opl[i].value);
+			op_errors[label] = opl[i].value * (1.0 - opl[i].value) * (1.0 - opl[i].value);
 
 		for (int j = 0; j < HL_NEURONS; j++)
-			opl[i].weights[j] += op_errors[i] * ALPHA * opl[i].value;
+			opl[i].weights[j] += ALPHA * op_errors[i] * hl2[j].value;
 	}
 
-	// Hidden layer 2
+	// hidden layer 1 -> hidden layer 2
 	for (int i = 0; i < HL_NEURONS; i++) {
 		// calc errors
 		float sum = 0;
 		for (int j = 0; j < OP_NEURONS; j++)
 			sum += op_errors[j] * opl[j].weights[i];
 
-		hl2_errors[i] = sum * (1 - hl2[i].value) * hl2[i].value;
+		// DELj = Oj * (1 - Oj) * SUM(DEL k * Wkj)
+		hl2_errors[i] = hl2[i].value * (1.0 - hl2[i].value) * sum;
 
 		// update weights
 		for (int j = 0; j < HL_NEURONS; j++)
-			hl2[i].weights[j] += hl2_errors[i] * ALPHA * hl2[i].value;
+			hl2[i].weights[j] += ALPHA * hl2_errors[i] * hl1[j].value;
 	}
 
 	// Hiden layer 1
@@ -117,11 +122,11 @@ int main() {
 		for (int j = 0; j < HL_NEURONS; j++)
 			sum += hl2_errors[j] * hl2[j].weights[i];
 
-		hl1_errors[i] = sum * (1 - hl1[i].value) * hl1[i].value;
+		hl1_errors[i] = hl1[i].value * (1 - hl1[i].value) * sum;
 
 		// update weights
 		for (int j = 0; j < IP_NEURONS; j++)
-			hl1[i].weights[j] += hl1_errors[i] * ALPHA * hl2[i].value;
+			hl1[i].weights[j] += ALPHA * hl1_errors[i] * initial_layer[j];
 	}
 
 	epoch += 1;
@@ -155,23 +160,23 @@ void load_initial() {
 
 void init() {
 	srand(time(NULL));
-	const int SPREAD = 256;
+	const int SPREAD = 8;
 
 	// hidden layers 1 and 2 weights
 	for (int i = 0; i < HL_NEURONS; i++) {
 
 		for (int j = 0; j < IP_NEURONS; j++)
 			hl1[i].weights[j] =
-				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
+				(float) ((rand() % SPREAD) - SPREAD / 2)/(float) (SPREAD/2);
 
 		for (int j = 0; j < HL_NEURONS; j++)
 			hl2[i].weights[j] =
-				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
+				(float) ((rand() % SPREAD) - SPREAD / 2)/(float) (SPREAD/2);
 	}
 
 	// Output layer weights
 	for (int i = 0; i < OP_NEURONS; i++)
 		for (int j = 0; j < HL_NEURONS; j++)
 			opl[i].weights[j] =
-				(float) ((rand() % SPREAD) - SPREAD / 2) / (float) (SPREAD/2);
+				(float) ((rand() % SPREAD) - SPREAD / 2)/(float) (SPREAD/2);
 }
