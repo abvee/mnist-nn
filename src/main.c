@@ -7,12 +7,11 @@ int token();
 void load_initial();
 float sigmoid(float x);
 
-enum {IP_NEURONS = 784, HL_NEURONS = 32, OP_NEURONS = 10};
+enum {IP_NEURONS = 784, OP_NEURONS = 10};
 
 
 FILE *fp = NULL;
 float initial_layer[784] = {0.0};
-const float ALPHA = 0.5;
 
 typedef struct {
 	float value;
@@ -28,12 +27,28 @@ hl1_node hl1[HL_NEURONS] = {0};
 hl2_node hl2[HL_NEURONS] = {0};
 hl2_node opl[OP_NEURONS] = {0};
 
-int main() {
+float alpha(int argc, char *argv[]) {
+	if (argc < 2)
+		return 0.5;
+	return atof(argv[1]);
+}
+
+int hl_neurons(int argc, char *argv[]) {
+	if (argc < 3)
+		return 32;
+	return atoi(argv[2]);
+}
+
+int main(int argc, char *argv[]) {
+	const float ALPHA = alpha(argc, argv);
+	const float HL_NEURONS = hl_neurons(argc, argv);
+
 	fp = fopen("mnist/mnist_train.csv", "r");
 	// skip the header line
 	while (getc(fp) != '\n');
 	int epoch = 0;
 
+	int correct = 0;
 	// initialize
 	init();
 
@@ -69,13 +84,11 @@ int main() {
 
 	// print after each pass
 	int largest = 0;
-	printf("Number: %d\n", label);
-	for (int i = 0; i < OP_NEURONS; i++) {
-		if (opl[i].value > opl[largest].value)
+	for (int i = 0; i < OP_NEURONS; i++)
+		if (opl[largest].value < opl[i].value)
 			largest = i;
-		printf("%d: %f\n", i, opl[i].value);
-	}
-	printf("Final: %d\n\n", largest);
+	if (largest == label)
+		correct += 1;
 
 	// Back propogation
 	float op_errors[OP_NEURONS] = {0.0};
@@ -127,6 +140,7 @@ int main() {
 	epoch += 1;
 	if (epoch < 60000)
 		goto epoch;
+	printf("%f\n", correct / (float) epoch);
 	return 0;
 }
 
@@ -150,7 +164,6 @@ void load_initial() {
 
 // set random weights for all the neurons
 #include <time.h>
-#include <stdlib.h>
 
 void init() {
 	srand(time(NULL));
