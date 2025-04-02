@@ -7,7 +7,7 @@ int token();
 void load_initial();
 float sigmoid(float x);
 
-enum {IP_NEURONS = 784, HL_NEURONS = 16, OP_NEURONS = 10};
+enum {IP_NEURONS = 784, HL_NEURONS = 32, OP_NEURONS = 10};
 
 
 FILE *fp = NULL;
@@ -24,14 +24,9 @@ typedef struct {
 	float weights[HL_NEURONS];
 } hl2_node;
 
-typedef struct {
-	float value;
-	float weights[HL_NEURONS];
-} op_node;
-
 hl1_node hl1[HL_NEURONS] = {0};
 hl2_node hl2[HL_NEURONS] = {0};
-op_node opl[OP_NEURONS] = {0};
+hl2_node opl[OP_NEURONS] = {0};
 
 int main() {
 	fp = fopen("mnist/mnist_train.csv", "r");
@@ -92,7 +87,7 @@ int main() {
 
 		// DELj = Oj * (1 - Oj) * (Tj - Oj)
 		// Target for the output layer is all 0s, except for the label neuron, which is 1
-		op_errors[i] = opl[i].value * (1 - opl[i].value) * (0.0 - opl[i].value);
+		op_errors[i] = opl[i].value * (1 - opl[i].value) * (- opl[i].value);
 		if (i == label)
 			op_errors[label] = opl[i].value * (1.0 - opl[i].value) * (1.0 - opl[i].value);
 
@@ -149,9 +144,8 @@ int token() {
 }
 
 void load_initial() {
-	for (int i = 0; i < IP_NEURONS; i++) {
+	for (int i = 0; i < IP_NEURONS; i++)
 		initial_layer[i] = (float) token() / 255.0;
-	}
 }
 
 // set random weights for all the neurons
