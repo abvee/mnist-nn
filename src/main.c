@@ -7,8 +7,7 @@ int token();
 void load_initial();
 float sigmoid(float x);
 
-enum {IP_NEURONS = 784, OP_NEURONS = 10};
-
+enum {IP_NEURONS = 784, HL_NEURONS = 512, OP_NEURONS = 10};
 
 FILE *fp = NULL;
 float initial_layer[784] = {0.0};
@@ -33,15 +32,8 @@ float alpha(int argc, char *argv[]) {
 	return atof(argv[1]);
 }
 
-int hl_neurons(int argc, char *argv[]) {
-	if (argc < 3)
-		return 32;
-	return atoi(argv[2]);
-}
-
 int main(int argc, char *argv[]) {
 	const float ALPHA = alpha(argc, argv);
-	const float HL_NEURONS = hl_neurons(argc, argv);
 
 	fp = fopen("mnist/mnist_train.csv", "r");
 	// skip the header line
@@ -83,12 +75,16 @@ int main(int argc, char *argv[]) {
 	}
 
 	// print after each pass
+	printf("Epoch: %d\nActual: %d\n", epoch, label);
 	int largest = 0;
-	for (int i = 0; i < OP_NEURONS; i++)
+	for (int i = 0; i < OP_NEURONS; i++) {
 		if (opl[largest].value < opl[i].value)
 			largest = i;
+		printf("%d: %f\n", i, opl[i].value);
+	}
 	if (largest == label)
 		correct += 1;
+	printf("Predicted: %d\n\n", largest);
 
 	// Back propogation
 	float op_errors[OP_NEURONS] = {0.0};
